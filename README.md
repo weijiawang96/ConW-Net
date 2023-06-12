@@ -1,5 +1,5 @@
 
-Official code _Weighted Point Cloud Normal Estimation_ for ICME 2023
+## Official code _Weighted Point Cloud Normal Estimation_ for ICME 2023
 
 Experiments are run on:
 
