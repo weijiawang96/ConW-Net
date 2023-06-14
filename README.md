@@ -61,7 +61,9 @@ For example, ```testset_036_noise_evaluation_results.txt``` shows results on 0.3
 
 Finally, if you wish to train the model, please run:
 
-```python run_training.py```
+```
+python run_training.py
+```
 
 
 
