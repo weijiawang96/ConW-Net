@@ -188,7 +188,30 @@ def main():
     projection_head = ProjHead_DGCNN_PointNet(out_dim=args.feature_dim).to(args.device)
 
 
-    # ## Use a single optimizer ##
+    optimizer1 = torch.optim.Adam(
+        itertools.chain(pt_encoder.parameters(),
+                        Weighting_Net.parameters(),
+                        projection_head.parameters()),
+        lr=args.lr,
+        betas=(0.5, 0.999),
+        eps=1e-08,
+        weight_decay=args.decay_rate
+    )
+
+    optimizer2 = torch.optim.Adam(
+        itertools.chain(nml_encoder.parameters(),
+                        projection_head.parameters()),
+        lr=args.lr,
+        betas=(0.5, 0.999),
+        eps=1e-08,
+        weight_decay=args.decay_rate
+    )
+
+    scheduler1 = optim.lr_scheduler.StepLR(optimizer1, step_size=10, gamma=0.5)
+    scheduler2 = optim.lr_scheduler.StepLR(optimizer2, step_size=10, gamma=0.5)
+
+    '''
+    # ## you may also use a single optimizer ##
     optimizer = torch.optim.Adam(
         itertools.chain(pt_encoder.parameters(),
                         Weighting_Net.parameters(),
@@ -200,6 +223,7 @@ def main():
         weight_decay=args.decay_rate
     )
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    '''
 
     # Loss function
     contrastive_criterion = contrastiveLoss(args).to(args.device)
@@ -216,7 +240,8 @@ def main():
 
         for pts, ctr_gt_nml, patch_gt_nmls, _ in tqdm(train_dataloader):
             # print(x_i.shape)
-            optimizer.zero_grad()
+            optimizer1.zero_grad()
+            optimizer2.zero_grad()
 
             pts = pts.to(dtype=torch.float).cuda()  # patch pts
             ctr_gt_nml = ctr_gt_nml.to(dtype=torch.float).cuda()  # gt central normal
@@ -251,11 +276,13 @@ def main():
             )
 
             loss.backward()
-            optimizer.step()
+            optimizer1.step()
+            optimizer2.step()
             loss_epoch += loss.item()
 
         loss = round(loss_epoch / len(train_dataloader), 4)
-        scheduler.step()
+        scheduler1.step()
+        scheduler2.step()
         print("Loss:", loss)
 
         # Note down the loss
@@ -275,8 +302,6 @@ def main():
                     'pt_encoder_state_dict': pt_encoder.state_dict(),
                     'nml_encoder_state_dict': nml_encoder.state_dict(),
                     'weighting_state_dict': Weighting_Net.state_dict(),
-                    'optimizer1_state_dict': optimizer.state_dict(),
-                    'scheduler1_state_dict': scheduler.state_dict(),
                 }
                 torch.save(state, savepath)
 
